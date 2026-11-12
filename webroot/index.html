@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light">
+  <title>DeviceSpoofLabs 汉化增强版</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="app-header">
+    <div class="app-title">DeviceSpoofLabs <span class="title-badge">汉化增强</span></div>
+    <div class="app-version" id="app-version">v—</div>
+  </header>
+
+  <nav class="tabs" id="tabs">
+    <button class="tab is-active" data-tab="dashboard">概览</button>
+    <button class="tab" data-tab="personas">设备身份</button>
+    <button class="tab" data-tab="config">配置</button>
+    <button class="tab" data-tab="settings">设置</button>
+  </nav>
+
+  <main id="content">
+    <div id="no-bridge" class="card notice hidden">
+      <div class="card-title">WebUI 需要 KernelSU 或 APatch 桥接环境</div>
+      <p class="muted">当前页面未检测到管理器 WebUI 桥接接口，你也可以在 Root Shell 中使用命令行管理：</p>
+      <pre class="logs">su
+devicespooflabs status
+devicespooflabs generate-persona
+devicespooflabs activate
+devicespooflabs deactivate
+devicespooflabs force-stop-targets
+devicespooflabs reboot</pre>
+    </div>
+
+    <section class="tab-panel is-active" id="panel-dashboard">
+      <div class="card">
+        <div class="card-label">默认标准模式（日常身份）</div>
+        <div class="status-row">
+          <div id="persona-status" class="status-pill status-unknown">加载中…</div>
+          <span id="scope-mode-badge" class="mode-badge hidden"></span>
+        </div>
+        <div id="persona-active-name" class="persona-active-name hidden"></div>
+        <div id="dash-quick-actions" class="actions dash-actions hidden">
+          <button class="btn" id="btn-dash-forcestop" type="button">强杀标准目标应用</button>
+          <button class="btn" data-go-tab="personas" type="button">切换标准机型</button>
+          <button class="btn" data-go-tab="config" type="button">配置参数</button>
+        </div>
+        <div id="auto-disabled" class="status-error-note hidden"></div>
+        <div id="status-error" class="status-error-note hidden">
+          <span>无法读取模块状态（这只是读取报错，不代表伪装已关闭）。</span>
+          <button class="btn" id="btn-retry-status">重试</button>
+        </div>
+      </div>
+
+      <div class="card super-card" id="super-dash-card">
+        <div class="card-label">超级伪装模式（全维度新机 · 独立目标列表）</div>
+        <div class="status-row">
+          <div id="super-status" class="status-pill status-inactive">未开启</div>
+          <span id="super-scope-badge" class="super-badge hidden"></span>
+        </div>
+        <div id="super-active-name" class="persona-active-name hidden"></div>
+        <div id="super-hardware-summary" class="muted-note hidden" style="margin-top:6px"></div>
+        <div class="actions dash-actions">
+          <button class="btn hidden" id="btn-dash-super-forcestop" type="button">强杀超级目标应用</button>
+          <button class="btn" data-go-tab="personas" type="button">设置超级机型</button>
+          <button class="btn" data-go-tab="config" type="button">调整新机参数</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">系统属性对照（标准模式）</div>
+        <div class="muted-note" id="values-note"></div>
+        <div id="values-table" class="values"></div>
+      </div>
+    </section>
+
+    <section class="tab-panel" id="panel-personas">
+      <div class="card persona-section">
+        <div class="persona-sec-head">
+          <div>
+            <div class="card-title" style="margin:0">默认普通标准模式 <span class="mode-badge">轻量兼容</span></div>
+            <p class="muted" style="margin:4px 0 0">保留原标准伪装行为与「标准目标应用列表」；同时可启用 1 套标准机型。</p>
+          </div>
+        </div>
+        <div class="persona-tools">
+          <select id="device-select" class="device-select hidden" aria-label="选择标准模式真机模板"></select>
+          <button class="btn btn-primary persona-new" id="btn-generate-persona">+ 生成标准机型</button>
+        </div>
+        <div id="device-note" class="muted-note device-note hidden"></div>
+        <button class="btn btn-target persona-scope-btn" id="btn-personas-std-scope" type="button">
+          <span class="target-main">
+            <span class="target-label">标准模式目标应用列表</span>
+            <span class="target-count" id="personas-std-scope-count">已选 0 个应用</span>
+          </span>
+          <span class="target-chevron" aria-hidden="true">›</span>
+        </button>
+        <div id="personas-list-standard" class="personas-list"></div>
+        <div id="personas-empty-standard" class="personas-empty-inline muted hidden">
+          暂无标准模式机型，可在上方选择模板点击 <b>+ 生成标准机型</b>。
+        </div>
+      </div>
+
+      <div class="card persona-section super-card" id="personas-super-section">
+        <div class="persona-sec-head">
+          <div>
+            <div class="card-title" style="margin:0">超级伪装模式 <span class="super-badge">全维度新机</span></div>
+            <p class="muted" style="margin:4px 0 0">针对强风控/硬件检测应用（如 AIDA64 等），接管 CPU 拓扑频率、内存/存储容量、Vulkan、SoC 节点、电池与基带，拥有完全独立的目标应用列表。</p>
+          </div>
+        </div>
+        <div class="persona-tools">
+          <select id="super-device-select" class="device-select hidden" aria-label="选择超级伪装新机模板"></select>
+          <button class="btn btn-primary persona-new" id="btn-generate-super-persona">+ 生成超级新机</button>
+        </div>
+        <div id="super-device-note" class="muted-note device-note hidden"></div>
+        <button class="btn btn-target persona-scope-btn" id="btn-personas-super-scope" type="button">
+          <span class="target-main">
+            <span class="target-label">超级伪装目标应用列表（与标准模式分开）</span>
+            <span class="target-count" id="personas-super-scope-count">已选 0 个应用</span>
+          </span>
+          <span class="target-chevron" aria-hidden="true">›</span>
+        </button>
+        <div id="personas-list-super" class="personas-list"></div>
+        <div id="personas-empty-super" class="personas-empty-inline muted hidden">
+          暂无超级伪装新机，可在上方选择（如 Google Pixel 11 Pro / 三星心系天下 W27）并点击 <b>+ 生成超级新机</b>。
+        </div>
+      </div>
+
+      <div class="persona-tools" style="margin-top:4px">
+        <button class="btn" id="btn-import-personas">导入配置</button>
+        <button class="btn" id="btn-export-personas">全部导出</button>
+      </div>
+      <div id="import-card" class="card hidden" style="margin-top:12px">
+        <div class="card-title">导入身份配置</div>
+        <div id="import-list" class="import-list"></div>
+        <p id="import-empty" class="muted hidden">未找到 <b>.persona</b> 文件，请将其放入 <b>Download/DeviceSpoofLabs</b> 或 <b>Download</b> 目录后再次点击“导入配置”。</p>
+      </div>
+    </section>
+
+    <section class="tab-panel" id="panel-config">
+      <div id="config-no-persona" class="card notice hidden">
+        <div class="card-title">尚未启用任何身份</div>
+        <p class="muted">请先在“设备身份”页生成一个标准机型或超级伪装新机并启用，再返回调整参数。</p>
+        <div class="actions"><button class="btn" data-go-tab="personas">前往设备身份</button></div>
+      </div>
+
+      <div id="config-body">
+        <div class="card" id="scope-card">
+          <div class="card-title">作用模式与目标应用（双模式独立列表）</div>
+          <p class="muted" style="margin-top:0">默认标准模式与超级伪装模式各自维护独立的目标应用清单，互不干扰。同一应用若同时被两套选中，超级伪装优先接管。</p>
+          <div class="mode-switch-group" role="radiogroup" aria-label="标准模式作用范围">
+            <label class="mode-option">
+              <input type="radio" name="scope-mode" value="per_app" id="mode-per-app">
+              <span class="mode-opt-box">
+                <strong>按应用生效（推荐）</strong>
+                <small>通过 Zygisk 注入勾选应用进程，保存后重开应用即生效</small>
+              </span>
+            </label>
+            <label class="mode-option">
+              <input type="radio" name="scope-mode" value="global" id="mode-global">
+              <span class="mode-opt-box">
+                <strong>全局生效（开机生效 · 仅标准模式）</strong>
+                <small>开机阶段全局 resetprop 改写，仍可对目标应用叠加增强伪装</small>
+              </span>
+            </label>
+          </div>
+
+          <button class="btn btn-target" id="btn-open-scope-apps" type="button">
+            <span class="target-main">
+              <span class="target-label">选择默认标准模式目标应用</span>
+              <span class="target-count" id="scope-target-count">已选 0 个应用</span>
+            </span>
+            <span class="target-chevron" aria-hidden="true">›</span>
+          </button>
+
+          <div class="actions">
+            <button class="btn btn-primary" id="btn-force-stop-targets" type="button">强杀标准目标应用</button>
+            <button class="btn" id="btn-sync-ai-targets" type="button">同步到 Android ID 列表</button>
+          </div>
+
+          <div class="super-scope-split">
+            <div class="extra-title" style="margin-bottom:4px">超级伪装模式目标应用（独立清单）</div>
+            <p class="muted" style="margin:0 0 8px">仅当超级伪装机型处于启用状态时生效，绝不会影响上方标准模式的日常软件。</p>
+            <button class="btn btn-target" id="btn-open-super-scope-apps" type="button" style="margin-bottom:10px">
+              <span class="target-main">
+                <span class="target-label">选择超级伪装目标应用</span>
+                <span class="target-count" id="super-scope-target-count">已选 0 个应用</span>
+              </span>
+              <span class="target-chevron" aria-hidden="true">›</span>
+            </button>
+            <div class="actions" style="margin-top:0">
+              <button class="btn btn-primary" id="btn-force-stop-super-targets" type="button">强杀超级目标应用</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" id="extras-card">
+          <div class="extras-head">
+            <div>
+              <div class="card-title" style="margin-bottom:4px">默认标准模式 · 进程级增强伪装</div>
+              <p class="muted" style="margin:0">仅编辑当前“默认标准模式”身份的轻量增强项，不影响超级伪装参数。</p>
+            </div>
+            <span class="cfg-saved" id="extras-saved"></span>
+          </div>
+
+          <div class="extra-block">
+            <div class="extra-row-head">
+              <div>
+                <div class="extra-title">完整硬件参数补充（突破全局限制）</div>
+                <div class="extra-desc">按应用模式下同步覆盖 device / name / board / platform / hardware / SoC / ro.boot.serialno，避免“机型与芯片矛盾”。</div>
+              </div>
+              <label class="switch"><input type="checkbox" id="ex-build-extra"><span class="slider"></span></label>
+            </div>
+            <div class="extra-actions-inline">
+              <button class="btn btn-sm" id="btn-autofill-profile" type="button">按当前设备模板自动填充</button>
+            </div>
+            <div class="extra-grid">
+              <label class="ex-field"><span>device (ro.product.device)</span><input type="text" id="ex-device" placeholder="如 houji"></label>
+              <label class="ex-field"><span>name (ro.product.name)</span><input type="text" id="ex-name" placeholder="如 houji"></label>
+              <label class="ex-field"><span>board (ro.product.board)</span><input type="text" id="ex-board" placeholder="如 pineapple"></label>
+              <label class="ex-field"><span>platform (ro.board.platform)</span><input type="text" id="ex-platform" placeholder="如 pineapple"></label>
+              <label class="ex-field"><span>hardware (ro.hardware)</span><input type="text" id="ex-hardware" placeholder="如 qcom"></label>
+              <label class="ex-field"><span>SoC 厂商 (SOC_MANUFACTURER)</span><input type="text" id="ex-soc-manuf" placeholder="如 Qualcomm"></label>
+              <label class="ex-field"><span>SoC 型号 (SOC_MODEL)</span><input type="text" id="ex-soc-model" placeholder="如 SM8650"></label>
+              <label class="ex-field"><span>Boot 序列号 (ro.boot.serialno)</span><input type="text" id="ex-boot-serial" placeholder="建议与 ro.serialno 一致"></label>
+              <label class="ex-field ex-field-full"><span>安全补丁日期 (可选，如 2026-06-05，留空保持真机)</span><input type="text" id="ex-sec-patch" placeholder="留空表示保持真机安全补丁"></label>
+            </div>
+          </div>
+
+          <div class="extra-block">
+            <div class="extra-row-head">
+              <div>
+                <div class="extra-title">GPU / OpenGL 渲染器伪装</div>
+                <div class="extra-desc">拦截进程内 glGetString 与 eglGetProcAddress，伪装 GL_VENDOR / GL_RENDERER / GL_VERSION。</div>
+              </div>
+              <label class="switch"><input type="checkbox" id="ex-gpu-on"><span class="slider"></span></label>
+            </div>
+            <div class="extra-grid">
+              <label class="ex-field"><span>GL_VENDOR</span><input type="text" id="ex-gl-vendor" placeholder="Qualcomm"></label>
+              <label class="ex-field"><span>GL_RENDERER</span><input type="text" id="ex-gl-renderer" placeholder="Adreno (TM) 750"></label>
+              <label class="ex-field ex-field-full"><span>GL_VERSION</span><input type="text" id="ex-gl-version" placeholder="OpenGL ES 3.2 V@0762.0"></label>
+            </div>
+          </div>
+
+          <div class="extra-block">
+            <div class="extra-row-head">
+              <div>
+                <div class="extra-title">Wi-Fi / 网卡 MAC 地址伪装</div>
+                <div class="extra-desc">拦截 getifaddrs 与 ioctl(SIOCGIFHWADDR)，替换目标应用读到的网卡硬件地址。</div>
+              </div>
+              <label class="switch"><input type="checkbox" id="ex-mac-on"><span class="slider"></span></label>
+            </div>
+            <div class="ai-value-row">
+              <input id="ex-mac-addr" type="text" autocapitalize="none" spellcheck="false" placeholder="如 02:a1:b2:c3:d4:e5">
+              <button class="btn" id="btn-gen-mac" type="button">随机 MAC</button>
+            </div>
+          </div>
+
+          <div class="extra-block">
+            <div class="extra-row-head">
+              <div>
+                <div class="extra-title">Widevine DRM ID 伪装</div>
+                <div class="extra-desc">拦截 MediaDrm.getPropertyByteArray("deviceUniqueId")，返回独立的 32 字节设备指纹。</div>
+              </div>
+              <label class="switch"><input type="checkbox" id="ex-drm-on"><span class="slider"></span></label>
+            </div>
+            <div class="ai-value-row">
+              <input id="ex-drm-id" type="text" autocapitalize="none" spellcheck="false" maxlength="64" placeholder="64位十六进制字符">
+              <button class="btn" id="btn-gen-drm" type="button">随机生成</button>
+            </div>
+          </div>
+
+          <div class="extra-block">
+            <div class="extra-row-head">
+              <div>
+                <div class="extra-title">内核 uname 信息伪装</div>
+                <div class="extra-desc">拦截目标应用调用 uname() 返回的内核版本，隐藏自定义编译内核特征。</div>
+              </div>
+              <label class="switch"><input type="checkbox" id="ex-uname-on"><span class="slider"></span></label>
+            </div>
+            <div class="extra-grid">
+              <label class="ex-field ex-field-full"><span>内核 Release (uname -r)</span><input type="text" id="ex-uname-rel" placeholder="6.1.75-android14-11-..."></label>
+              <label class="ex-field ex-field-full"><span>内核 Version (uname -v)</span><input type="text" id="ex-uname-ver" placeholder="#1 SMP PREEMPT ..."></label>
+            </div>
+          </div>
+
+          <div class="extra-block">
+            <div class="extra-row-head">
+              <div>
+                <div class="extra-title">内核 boot_id 伪装 (/proc/sys/kernel/random/boot_id)</div>
+                <div class="extra-desc">防止同一次开机内连续切号或重开应用被同一 boot_id 关联。</div>
+              </div>
+            </div>
+            <div class="extra-grid">
+              <label class="ex-field ex-field-full">
+                <span>boot_id 模式</span>
+                <select id="ex-bootid-mode" class="device-select">
+                  <option value="off">关闭（使用系统真实 boot_id）</option>
+                  <option value="fixed">固定 UUID（绑定当前设备身份）</option>
+                  <option value="random">每次启动目标应用自动随机新 UUID</option>
+                </select>
+              </label>
+            </div>
+            <div class="ai-value-row" id="ex-bootid-row" style="margin-top:8px">
+              <input id="ex-bootid-val" type="text" autocapitalize="none" spellcheck="false" placeholder="UUID 格式">
+              <button class="btn" id="btn-gen-bootid" type="button">随机 UUID</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card super-card" id="super-card">
+          <div class="extras-head">
+            <div>
+              <div class="card-title" style="margin-bottom:4px">超级伪装模式 · 全维度新机参数</div>
+              <p class="muted" style="margin:0">仅作用于“设备身份 → 超级伪装模式”当前选中的新机与独立超级目标列表：接管 CPU 拓扑频率、RAM/存储、Vulkan、SoC、电池、基带与环境隐匿。</p>
+            </div>
+            <span class="cfg-saved" id="super-saved"></span>
+          </div>
+
+          <div id="super-no-persona" class="muted-note hidden" style="margin-bottom:10px">
+            当前未启用超级伪装机型。请前往“设备身份 → 超级伪装模式”生成或开启一套超级新机后再调整，或在下方预览配置。
+          </div>
+
+          <div class="super-banner">
+            <div>
+              <div class="super-banner-title">超级伪装新机引擎 <span class="super-badge" id="super-state-badge">当前：未开启</span></div>
+              <div class="super-banner-desc" id="super-card-persona-desc">点击一键套用将同步当前超级机型的 CPU、内存、存储、Vulkan、GPU 与基带全套参数。</div>
+            </div>
+            <label class="switch"><input type="checkbox" id="sp-master-on"><span class="slider"></span></label>
+          </div>
+
+          <div class="super-preset-bar">
+            <button class="btn btn-primary btn-sm" id="btn-super-autofill" type="button">按当前超级机型重填全套参数</button>
+            <button class="btn btn-sm" id="btn-super-reroll" type="button">全部指纹参数随机重生成</button>
+            <button class="btn btn-sm" id="btn-super-default" type="button">关闭超级伪装</button>
+          </div>
+
+          <div id="super-details" class="super-details">
+            <div class="extra-block us-mode-block" id="us-mode-block">
+              <div class="extra-row-head">
+                <div>
+                  <div class="extra-title">一键美区模式 (US Region) <span class="super-badge hidden" id="sp-us-badge">美区已生效</span></div>
+                  <div class="extra-desc">一键切换目标应用内的美国本土环境：强制 `en-US` 系统语言与资源、美区时区、美国运营商 (`310260`/`310410`/`311480`)、Wi-Fi 国家码 (`US`) 与美区 GPS 坐标；关闭开关即无缝还原原配置。</div>
+                </div>
+                <label class="switch"><input type="checkbox" id="sp-us-on"><span class="slider"></span></label>
+              </div>
+              <div class="extra-grid">
+                <label class="ex-field ex-field-full">
+                  <span>美区城市与运营商节点 (US_PRESET)</span>
+                  <select id="sp-us-preset">
+                    <option value="tmobile_la">洛杉矶 · T-Mobile (PST/PDT · 310260 · en-US · 34.05°N)</option>
+                    <option value="att_ny">纽约 · AT&amp;T (EST/EDT · 310410 · en-US · 40.71°N)</option>
+                    <option value="verizon_chi">芝加哥 · Verizon (CST/CDT · 311480 · en-US · 41.88°N)</option>
+                    <option value="googlefi_mv">山景城 · Google Fi / Pixel (PST/PDT · 310260 · en-US · 37.42°N)</option>
+                  </select>
+                </label>
+              </div>
+            </div>
+
+            <div class="extra-block">
+              <div class="extra-row-head">
+                <div>
+                  <div class="extra-title">CPU 处理器拓扑与频率伪装</div>
+                  <div class="extra-desc">虚拟 `/proc/cpuinfo`、`/sys/devices/system/cpu/cpu*/cpufreq/*`、ARM `midr_el1` 与 `sysconf` 核心数。</div>
+                </div>
+                <label class="switch"><input type="checkbox" id="sp-cpu-on"><span class="slider"></span></label>
+              </div>
+              <div class="extra-grid">
+                <label class="ex-field ex-field-full">
+                  <span>SoC 核心与频率预设 (CPU_PROFILE)</span>
+                  <select id="sp-cpu-profile">
+                    <option value="oryon_elite2">高通骁龙 8 Elite Gen 2 (SM8850 / 三星 W27 · Oryon 4.61GHz)</option>
+                    <option value="oryon_elite">高通骁龙 8 Elite (SM8750 · Oryon 4.32GHz)</option>
+                    <option value="sd8g3">高通骁龙 8 Gen 3 (SM8650 · X4 3.30GHz)</option>
+                    <option value="sd8g2">高通骁龙 8 Gen 2 (SM8550 · X3 3.19GHz)</option>
+                    <option value="sd7sg2">高通骁龙 7s Gen 2 (SM7435 · A78 2.40GHz)</option>
+                    <option value="tensor_g6">Google Tensor G6 (Pixel 11 Pro · X925 3.90GHz)</option>
+                    <option value="tensor_g4">Google Tensor G4 (Pixel 9 Pro · X4 3.10GHz)</option>
+                    <option value="tensor_g3">Google Tensor G3 (Pixel 8 Pro · 9核心 X3 2.91GHz)</option>
+                    <option value="tensor_g2">Google Tensor G2 (Pixel 7 Pro · 2xX1 2.85GHz)</option>
+                    <option value="exynos_1480">Samsung Exynos 1480 (Xclipse 530 · 2.75GHz)</option>
+                    <option value="exynos_1380">Samsung Exynos 1380 (2.40GHz)</option>
+                    <option value="dimensity_9400">联发科天玑 9400 (MT6991 · X925 3.63GHz)</option>
+                  </select>
+                </label>
+              </div>
+            </div>
+
+            <div class="extra-block">
+              <div class="extra-row-head">
+                <div>
+                  <div class="extra-title">运行内存 RAM 与 UFS 存储容量伪装</div>
+                  <div class="extra-desc">拦截 `/proc/meminfo`、`sysinfo()` 与 `statfs`/`statvfs`（接管 AIDA64 与 `StatFs` 内存/磁盘总容量）。</div>
+                </div>
+                <label class="switch"><input type="checkbox" id="sp-mem-on"><span class="slider"></span></label>
+              </div>
+              <div class="extra-grid">
+                <label class="ex-field">
+                  <span>运行内存规格 (RAM_GB)</span>
+                  <select id="sp-ram-gb">
+                    <option value="8">8 GB</option>
+                    <option value="12">12 GB</option>
+                    <option value="16">16 GB</option>
+                    <option value="24">24 GB</option>
+                  </select>
+                </label>
+                <label class="ex-field">
+                  <span>机身存储规格 (STORAGE_GB)</span>
+                  <select id="sp-storage-gb">
+                    <option value="128">128 GB</option>
+                    <option value="256">256 GB</option>
+                    <option value="512">512 GB</option>
+                    <option value="1024">1024 GB (1 TB)</option>
+                  </select>
+                </label>
+              </div>
+            </div>
+
+            <div class="extra-block">
+              <div class="extra-row-head">
+                <div>
+                  <div class="extra-title">Vulkan 硬件加速驱动伪装</div>
+                  <div class="extra-desc">拦截 `vkGetInstanceProcAddr` / `vkGetPhysicalDeviceProperties*`，同步修改 Vulkan 设备名、VendorID、DeviceID 与 UUID。</div>
+                </div>
+                <label class="switch"><input type="checkbox" id="sp-vk-on"><span class="slider"></span></label>
+              </div>
+              <div class="extra-grid">
+                <label class="ex-field ex-field-full"><span>Vulkan 设备名称 (VK_DEVICE_NAME)</span><input type="text" id="sp-vk-name" placeholder="如 PowerVR DXT-48-1536 / Adreno (TM) 840"></label>
+                <label class="ex-field"><span>Vendor ID (十六进制)</span><input type="text" id="sp-vk-vid" placeholder="0x5143 / 0x1010 / 0x13B5"></label>
+                <label class="ex-field"><span>Device ID (十六进制)</span><input type="text" id="sp-vk-did" placeholder="0x44008400"></label>
+              </div>
+            </div>
+
+            <div class="extra-block">
+              <div class="extra-row-head">
+                <div>
+                  <div class="extra-title">SoC 硬件节点伪装 (/sys/devices/soc0)</div>
+                  <div class="extra-desc">虚拟 `family` / `machine` / `chip_name` / `soc_id` / `serial_number`，消除真实芯片平台残留。</div>
+                </div>
+                <label class="switch"><input type="checkbox" id="sp-soc-on"><span class="slider"></span></label>
+              </div>
+              <div class="extra-grid">
+                <label class="ex-field"><span>SOC_FAMILY</span><input type="text" id="sp-soc-family" placeholder="Snapdragon / Google Tensor"></label>
+                <label class="ex-field"><span>SOC_MACHINE</span><input type="text" id="sp-soc-machine" placeholder="SM8850 / Kodiak"></label>
+                <label class="ex-field"><span>SOC_ID 编号</span><input type="text" id="sp-soc-id" placeholder="688 / 710"></label>
+                <label class="ex-field"><span>SOC 芯片序列号 (Hex)</span><input type="text" id="sp-soc-serial" placeholder="8位十六进制"></label>
+              </div>
+            </div>
+
+            <div class="extra-block">
+              <div class="extra-row-head">
+                <div>
+                  <div class="extra-title">电池设计容量与开机时间 (/sys/class/power_supply + /proc/uptime)</div>
+                  <div class="extra-desc">改写电池设计容量 (`mAh`) 与当前开机持续运行时间 (`uptime`)。</div>
+                </div>
+                <label class="switch"><input type="checkbox" id="sp-bat-on"><span class="slider"></span></label>
+              </div>
+              <div class="extra-grid">
+                <label class="ex-field"><span>电池设计容量 (mAh)</span><input type="number" id="sp-battery-mah" placeholder="如 5200"></label>
+                <label class="ex-field">
+                  <span style="display:flex;justify-content:space-between;align-items:center"><span>伪装开机秒数 (UPTIME_SEC)</span><input type="checkbox" id="sp-uptime-on" title="启用 uptime 伪装"></span>
+                  <input type="number" id="sp-uptime" placeholder="如 14520">
+                </label>
+              </div>
+            </div>
+
+            <div class="extra-block">
+              <div class="extra-row-head">
+                <div>
+                  <div class="extra-title">运营商 / 基带 / SIM / 虚拟 IMEI</div>
+                  <div class="extra-desc">覆盖 `gsm.operator.*`、`gsm.sim.operator.*`、`gsm.version.baseband`（同步 `Build.getRadioVersion()`）及 IMEI 属性。</div>
+                </div>
+                <label class="switch"><input type="checkbox" id="sp-carrier-on"><span class="slider"></span></label>
+              </div>
+              <div class="extra-grid">
+                <label class="ex-field"><span>运营商名称 (CARRIER_NAME)</span><input type="text" id="sp-carrier-name" placeholder="中国移动 / T-Mobile"></label>
+                <label class="ex-field"><span>MCC/MNC (CARRIER_MCCMNC)</span><input type="text" id="sp-carrier-mccmnc" placeholder="46000 / 310260"></label>
+                <label class="ex-field"><span>国家代码 (CARRIER_COUNTRY)</span><input type="text" id="sp-carrier-country" placeholder="cn / us"></label>
+                <label class="ex-field"><span>基带版本 (BASEBAND_VER)</span><input type="text" id="sp-baseband" placeholder="MPSS.DE..."></label>
+                <label class="ex-field ex-field-full">
+                  <span>虚拟 IMEI (FAKE_IMEI)</span>
+                  <div class="ai-value-row">
+                    <input id="sp-fake-imei" type="text" autocapitalize="none" spellcheck="false" maxlength="15" placeholder="15位 Luhn IMEI">
+                    <button class="btn" id="btn-gen-sp-imei" type="button">随机 IMEI</button>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            <div class="extra-block">
+              <div class="extra-row-head">
+                <div>
+                  <div class="extra-title">构建主机与时区/语言 (`Build.HOST` / `TimeZone` / `Locale`)</div>
+                  <div class="extra-desc">覆盖 `Build.HOST` / `USER` / `SKU`、`ro.build.*` 与进程内 `TimeZone` / `Locale`。</div>
+                </div>
+                <label class="switch"><input type="checkbox" id="sp-host-on"><span class="slider"></span></label>
+              </div>
+              <div class="extra-grid">
+                <label class="ex-field"><span>Build.HOST</span><input type="text" id="sp-host" placeholder="kodiak-build"></label>
+                <label class="ex-field"><span>Build.USER</span><input type="text" id="sp-user" placeholder="android-build"></label>
+                <label class="ex-field">
+                  <span style="display:flex;justify-content:space-between;align-items:center"><span>时区 ID (TIMEZONE_ID)</span><input type="checkbox" id="sp-tz-on" title="启用时区与语言覆写"></span>
+                  <input type="text" id="sp-tz" placeholder="Asia/Shanghai / America/Los_Angeles">
+                </label>
+                <label class="ex-field"><span>语言区域 (LOCALE_ID)</span><input type="text" id="sp-locale" placeholder="zh-CN / en-US"></label>
+              </div>
+            </div>
+
+            <div class="extra-block">
+              <div class="extra-row-head">
+                <div>
+                  <div class="extra-title">超级新机硬件标识与主板代号 (ro.product.* / SoC / Boot)</div>
+                  <div class="extra-desc">同步改写超级目标进程读到的设备代号、主板平台、SoC 型号、Boot 序列号，并抑制宿主机 MIUI / 第三方 ROM 残留属性。</div>
+                </div>
+                <label class="switch"><input type="checkbox" id="sp-build-extra"><span class="slider"></span></label>
+              </div>
+              <div class="extra-grid">
+                <label class="ex-field"><span>device (ro.product.device)</span><input type="text" id="sp-device" placeholder="kodiak / q2q"></label>
+                <label class="ex-field"><span>name (ro.product.name)</span><input type="text" id="sp-name" placeholder="kodiak / q2qzcx"></label>
+                <label class="ex-field"><span>board (ro.product.board)</span><input type="text" id="sp-board" placeholder="kodiak / canoe"></label>
+                <label class="ex-field"><span>platform (ro.board.platform)</span><input type="text" id="sp-platform" placeholder="kodiak / sun"></label>
+                <label class="ex-field"><span>hardware (ro.hardware)</span><input type="text" id="sp-hardware" placeholder="kodiak / qcom"></label>
+                <label class="ex-field"><span>SoC 厂商 (SOC_MANUFACTURER)</span><input type="text" id="sp-soc-manuf" placeholder="Google / Qualcomm"></label>
+                <label class="ex-field"><span>SoC 型号 (SOC_MODEL)</span><input type="text" id="sp-soc-model" placeholder="Tensor G6 / SM8850"></label>
+                <label class="ex-field"><span>Boot 序列号 (ro.boot.serialno)</span><input type="text" id="sp-boot-serial" placeholder="硬件序列号"></label>
+              </div>
+            </div>
+
+            <div class="extra-block">
+              <div class="extra-row-head">
+                <div>
+                  <div class="extra-title">GPU OpenGL 渲染器伪装</div>
+                  <div class="extra-desc">拦截进程内 `glGetString`，与上方 Vulkan 参数协同伪装 `GL_VENDOR` / `GL_RENDERER` / `GL_VERSION` 及驱动提示。</div>
+                </div>
+                <label class="switch"><input type="checkbox" id="sp-gpu-on"><span class="slider"></span></label>
+              </div>
+              <div class="extra-grid">
+                <label class="ex-field"><span>GL_VENDOR</span><input type="text" id="sp-gl-vendor" placeholder="Imagination Technologies / Qualcomm"></label>
+                <label class="ex-field"><span>GL_RENDERER</span><input type="text" id="sp-gl-renderer" placeholder="PowerVR DXT-48-1536 / Adreno (TM) 840"></label>
+                <label class="ex-field ex-field-full"><span>GL_VERSION</span><input type="text" id="sp-gl-version" placeholder="OpenGL ES 3.2 ..."></label>
+              </div>
+            </div>
+
+            <div class="extra-block">
+              <div class="extra-row-head">
+                <div>
+                  <div class="extra-title">网卡 MAC / Widevine DRM / 内核 uname 与 boot_id</div>
+                  <div class="extra-desc">为超级新机进程提供独立的网卡硬件地址、Widevine ID、内核 `uname` 与虚拟 `boot_id`。</div>
+                </div>
+              </div>
+              <div class="extra-grid">
+                <label class="ex-field">
+                  <span style="display:flex;justify-content:space-between;align-items:center"><span>Wi-Fi MAC 地址</span><input type="checkbox" id="sp-mac-on" title="启用 MAC 伪装"></span>
+                  <input type="text" id="sp-mac-addr" autocapitalize="none" spellcheck="false" placeholder="02:xx:xx:xx:xx:xx">
+                </label>
+                <label class="ex-field">
+                  <span style="display:flex;justify-content:space-between;align-items:center"><span>内核 Release (uname -r)</span><input type="checkbox" id="sp-uname-on" title="启用 uname 伪装"></span>
+                  <input type="text" id="sp-uname-rel" placeholder="6.12.18-android16-...">
+                </label>
+                <label class="ex-field ex-field-full">
+                  <span style="display:flex;justify-content:space-between;align-items:center"><span>Widevine DRM ID (64 位 Hex)</span><input type="checkbox" id="sp-drm-on" title="启用 DRM 伪装"></span>
+                  <input type="text" id="sp-drm-id" autocapitalize="none" spellcheck="false" maxlength="64" placeholder="64位十六进制">
+                </label>
+                <label class="ex-field">
+                  <span>boot_id 模式</span>
+                  <select id="sp-bootid-mode" class="device-select">
+                    <option value="off">关闭（真机）</option>
+                    <option value="fixed">固定新 UUID</option>
+                    <option value="random">每次启动随机</option>
+                  </select>
+                </label>
+                <label class="ex-field" id="sp-bootid-wrap">
+                  <span>boot_id UUID</span>
+                  <input type="text" id="sp-bootid-val" autocapitalize="none" spellcheck="false" placeholder="UUID">
+                </label>
+              </div>
+            </div>
+
+            <div class="extra-block">
+              <div class="extra-row-head">
+                <div>
+                  <div class="extra-title">系统纯净态属性 (Bootloader 锁定与非调试)</div>
+                  <div class="extra-desc">在目标进程内强制返回 `verifiedbootstate=green`、`flash.locked=1`、`ro.debuggable=0`、`ro.secure=1`、`sys.usb.state=none` 并净化 `/proc/cmdline`。</div>
+                </div>
+                <label class="switch"><input type="checkbox" id="sp-purity-on"><span class="slider"></span></label>
+              </div>
+            </div>
+
+            <div class="extra-block">
+              <div class="extra-row-head">
+                <div>
+                  <div class="extra-title">进程环境隐匿 (`/proc/self/maps` 与 `mounts` 过滤)</div>
+                  <div class="extra-desc">过滤目标进程读取 `/proc/self/maps` 与 `/proc/mounts` 时暴露的 Zygisk / `/data/adb` / 模块特征行。</div>
+                </div>
+                <label class="switch"><input type="checkbox" id="sp-hideenv-on"><span class="slider"></span></label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" id="android-id-card">
+          <div class="ai-head">
+            <div class="ai-head-text">
+              <div class="card-title">Android ID (SSAID)</div>
+              <p class="muted">按包名修改系统 settings_ssaid.xml 中的 Android ID。保存后需重启手机生效。</p>
+            </div>
+            <label class="switch" title="启用此身份的 Android ID 伪装">
+              <input type="checkbox" id="ai-enabled"><span class="slider"></span>
+            </label>
+          </div>
+
+          <button class="btn btn-target" id="btn-open-apps" type="button">
+            <span class="target-main">
+              <span class="target-label">Android ID 目标应用</span>
+              <span class="target-count" id="ai-target-count">已选 0 个应用</span>
+            </span>
+            <span class="target-chevron" aria-hidden="true">›</span>
+          </button>
+
+          <div class="ai-field">
+            <label class="ai-field-label" for="ai-value">Android ID 数值</label>
+            <div class="ai-value-row">
+              <input id="ai-value" type="text" inputmode="latin" autocapitalize="none"
+                     autocomplete="off" spellcheck="false" maxlength="16"
+                     placeholder="16 位十六进制字符">
+              <button class="btn" id="ai-generate" type="button">随机生成</button>
+            </div>
+            <div class="ai-hint" id="ai-value-hint">需为 16 位小写十六进制字符（0–9，a–f）。</div>
+          </div>
+          <div class="ai-foot">
+            <button class="btn" id="btn-apply-ai-now" type="button">立即写入 SSAID</button>
+            <button class="btn btn-danger-outline" id="btn-restore-ai" type="button">还原原机 Android ID</button>
+          </div>
+        </div>
+
+        <div id="config-editors-wrap">
+          <div class="cfg-mode-bar" id="config-mode-bar">
+            <div>
+              <div class="card-title" style="margin:0;font-size:15px">底层 `.conf` 属性明细</div>
+              <div class="muted" id="config-mode-hint" style="font-size:12px">切换查看或编辑对应模式的属性文件</div>
+            </div>
+            <div class="cfg-mode-pills">
+              <button class="cfg-mode-pill is-active" id="btn-cfg-mode-std" type="button">标准模式</button>
+              <button class="cfg-mode-pill" id="btn-cfg-mode-super" type="button">超级伪装</button>
+            </div>
+          </div>
+          <div id="config-editors"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="tab-panel" id="panel-settings">
+      <div class="card">
+        <div class="card-title">模块信息</div>
+        <div class="kv"><span>当前版本</span><span id="settings-version">—</span></div>
+        <div class="kv"><span>Zygisk 按应用引擎</span><span id="settings-zygisk">—</span></div>
+        <div class="kv"><span>当前作用模式</span><span id="settings-scope">—</span></div>
+        <div class="kv"><span>不安全属性模式（全局）</span><span id="settings-unsafe">—</span></div>
+        <div class="kv"><span>原机属性备份</span><span id="settings-backup">—</span></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">日志与诊断</div>
+        <div class="actions">
+          <button class="btn" id="btn-view-logs">查看日志</button>
+          <button class="btn" id="btn-diagnostics">运行诊断</button>
+          <button class="btn" id="btn-export-logs">导出到 Download</button>
+          <button class="btn btn-danger-outline" id="btn-clear-logs">清空日志</button>
+        </div>
+        <pre id="logs-view" class="logs hidden"></pre>
+      </div>
+
+      <div class="card author-card">
+        <div class="card-title">关于作者</div>
+        <div class="author-profile">
+          <img class="author-avatar" src="assets/yubunus-avatar.jpg" alt="" aria-hidden="true">
+          <div class="author-main">
+            <div class="author-name">yubunus</div>
+            <div class="muted" style="margin:2px 0 0;font-size:12px">原作者 @yubunus · 本地汉化与 Zygisk 按应用作用域增强版</div>
+          </div>
+        </div>
+        <div class="author-links" aria-label="作者链接">
+          <a class="btn author-link" href="https://github.com/yubunus" data-external-url="https://github.com/yubunus" target="_blank" rel="noopener noreferrer">
+            <svg class="author-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 .5a12 12 0 0 0-3.79 23.39c.6.11.82-.26.82-.58v-2.04c-3.34.73-4.04-1.42-4.04-1.42-.55-1.39-1.34-1.76-1.34-1.76-1.09-.75.08-.73.08-.73 1.21.08 1.85 1.24 1.85 1.24 1.07 1.84 2.81 1.31 3.5 1 .11-.78.42-1.31.76-1.61-2.67-.3-5.47-1.33-5.47-5.92 0-1.31.47-2.38 1.24-3.22-.12-.3-.54-1.52.12-3.18 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 0 1 6.01 0c2.29-1.55 3.3-1.23 3.3-1.23.66 1.66.24 2.88.12 3.18.77.84 1.24 1.91 1.24 3.22 0 4.6-2.81 5.62-5.48 5.92.43.37.81 1.1.81 2.22v3.29c0 .32.22.7.82.58A12 12 0 0 0 12 .5Z"/>
+            </svg>
+            <span>GitHub</span>
+          </a>
+          <a class="btn author-link author-link-primary" href="https://t.me/yubunus" data-external-url="https://t.me/yubunus" target="_blank" rel="noopener noreferrer">
+            <svg class="author-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M22.21 2.38c.37-.15.78.16.7.56l-3.27 17.62c-.06.34-.46.5-.75.3l-5.4-3.92-2.77 2.69c-.27.26-.72.13-.81-.24l-.98-4.08-5.19-1.7c-.42-.14-.46-.72-.06-.91L21.3 2.43c.28-.13.62-.16.91-.05ZM9.43 14.72l.76 3.18 1.48-2.89 6.96-8.34-9.2 8.05Z"/>
+            </svg>
+            <span>Telegram</span>
+          </a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div id="app-picker" class="app-picker hidden" aria-hidden="true">
+    <header class="picker-header">
+      <button class="picker-back" id="picker-back" type="button" aria-label="返回">‹</button>
+      <div class="picker-heading">
+        <div class="picker-title" id="picker-title">选择目标应用</div>
+        <div class="picker-subtitle" id="picker-count">已选 0 个应用</div>
+      </div>
+      <button class="btn btn-primary picker-done" id="picker-done" type="button">完成</button>
+    </header>
+    <div class="picker-tools">
+      <div class="picker-search">
+        <span class="picker-search-icon" aria-hidden="true">⌕</span>
+        <input id="picker-search-input" type="search" inputmode="search" autocapitalize="none"
+               autocomplete="off" spellcheck="false" placeholder="搜索应用名称或包名">
+      </div>
+      <label class="picker-sys">
+        <input type="checkbox" id="picker-show-system"> <span>显示系统应用</span>
+      </label>
+    </div>
+    <div class="picker-list" id="picker-list"></div>
+    <div class="picker-status" id="picker-status">正在加载应用列表…</div>
+  </div>
+
+  <div id="toast-bar" class="toast-bar hidden" role="status" aria-live="polite">
+    <div id="toast-message" class="toast-message"></div>
+    <button id="toast-reboot" class="btn btn-primary btn-toast hidden" data-action="reboot">立即重启</button>
+  </div>
+
+  <div id="overlay" class="overlay hidden"><div class="spinner"></div></div>
+
+  <script src="app.js"></script>
+</body>
+</html>

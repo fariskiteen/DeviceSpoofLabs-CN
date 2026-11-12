@@ -1,0 +1,13 @@
+# Git ignores
+.DS_Store
+Thumbs.db
+*.log
+*.tmp
+*.bak
+
+# Build / Packaged zips
+*.zip
+!module.zip
+
+# Personal config overrides if any
+config/local_override.conf

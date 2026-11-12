@@ -1,0 +1,6 @@
+id=devicespooflab
+name=DeviceSpoofLabs 汉化增强版
+version=v4.2-cn
+versionCode=42
+author=@yubunus (汉化&按应用/超级伪装增强)
+description=默认标准模式与超级伪装模式双轨独立生效（目标应用列表分离 + 设备身份页独立分区，全维度新机 CPU/RAM/存储/Vulkan/SoC/基带/隐匿），支持 Pixel 11 Pro 与三星心系天下 W27。
